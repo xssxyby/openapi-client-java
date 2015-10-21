@@ -7,13 +7,13 @@
 
 * **yingmi-openapi-root-ca.crt** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * **openapi-[环境]-cert-[商户名].crt** － 客户端证书文件，用于盈米服务器验证客户端
-* openapi-[环境]-cert-[商户名].key － 客户端证书文件的秘钥文件
-* api key － 一个长字符串，用于唯一标志接入商户
-* api secret  一个长字符串，用于产生请求签名
+* **openapi-[环境]-cert-[商户名].key** － 客户端证书文件的秘钥文件
+* **api key** － 一个长字符串，用于唯一标志接入商户
+* **api secret**  一个长字符串，用于产生请求签名
 
 本项目提供了一段简单的代码来使用这些信息访问盈米openapi。
 
-> 注意，切勿直接将该代码用于生产，因为样例代码不考虑如何处理如断连、日志输入、异步访问等问题。请根据自身需要开发SDK。
+> 注意，切勿直接将该代码用于生产，因为样例代码不考虑如何处理如断连、日志、异步访问等问题。请根据自身需要开发SDK。
 
 # 1. 配置SSL证书
 
@@ -137,10 +137,10 @@ java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
 使用
 
 ```
-target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar -h
+java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar -h
 ```
 
-可以查看使用帮助
+可以查看使用帮助.
 
 
 
