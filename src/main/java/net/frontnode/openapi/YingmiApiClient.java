@@ -79,7 +79,7 @@ public class YingmiApiClient {
 
     public String getFundsSearchInfo() {
         try {
-            return get("/product/getFundsSearchInfo", new HashMap<>());
+            return get("/product/getFundsSearchInfo", new HashMap<String, String>());
         } catch (URISyntaxException e) {
             e.printStackTrace();
         } catch (IOException e) {
