@@ -1,35 +1,48 @@
-Yingmi Open Api Java Client Sample
-===================
+盈米Openopi Java客户端样例代码
+===================================
 
-本文介绍如何使用Java访问yingmi openapi。
+本文介绍如何使用Java访问盈米openapi。本样例基于Java 1.7, HttpClient 4.5版本编写。
 
-# 配置SSL证书
+在与盈米联系联系确认要接入openapi后，盈米会提供一组文件／key用于接入。
 
-盈米openapi采用双向SSL校验，盈米会给每个接入商发放3个文件：
+* **yingmi-openapi-root-ca.crt** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
+* **openapi-[环境]-cert-[商户名].crt** － 客户端证书文件，用于盈米服务器验证客户端
+* openapi-[环境]-cert-[商户名].key － 客户端证书文件的秘钥文件
+* api key － 一个长字符串，用于唯一标志接入商户
+* api secret  一个长字符串，用于产生请求签名
+
+本项目提供了一段简单的代码来使用这些信息访问盈米openapi。
+
+> 注意，切勿直接将该代码用于生产，因为样例代码不考虑如何处理如断连、日志输入、异步访问等问题。请根据自身需要开发SDK。
+
+# 1. 配置SSL证书
+
+盈米openapi采用双向SSL校验，因此客户端需要：
 
 * yingmi-openapi-root-ca.crt － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * openapi-[环境]-cert-[商户名].crt － 客户端证书文件，用于盈米服务器验证客户端
 * openapi-[环境]-cert-[商户名].key － 客户端证书文件的秘钥文件
 
-其中“环境”可能是`test`或者`prod`分别对应测试环境和生产环境。商户名是唯一的商户名称。（下文举例环境使用`test`，商户名用`foo`）.
+其中“环境”可能是`test`或者`prod`分别对应测试环境和生产环境。商户名是唯一的商户名称。（下文举例使用`test`，商户名用`foo`）.
 
-在Java中，根据JCE的规范，证书需要先配置truststore／keystore文件。总体的配置步骤是：
-1. 导入根证书到truststore中；
-2. 导入客户端证书到keystore中；
-3. 启动程序，程序使用配置的truststore／keystore。
+在Java中，根据JSSE的规范，证书需要先导入到truststore／keystore文件，才能被Java识别和使用。
 
-## 步骤1，导入根证书到truststore
+步骤为：
+
+## 1.1 盈米openapi根证书（root ca）到truststore
 
 ```
-keytool -import -keystore truststore -file path/to/yingmi-openapi-root-ca.crt -alias yingmica
+keytool -import -keystore truststore.jks -file path/to/yingmi-openapi-root-ca.crt -alias yingmica
 ```
 命令行会提示输入一个truststore的密码。请记下这个密码，下面配置会用到。
 
-成功后，该命令会产生一个名称为"truststore"的文件。你可以任意命名这个文件。
+命令行还会提示“是否要信任该证书”，输入“Y”，并回车确认。
 
-## 步骤2，导入客户端证书到keystore
+成功后，该命令会产生一个名称为"truststore.jks"的文件。
 
-keystore不直接支持crt格式的文件。所以首先先用openssl命令将证书转换为pkcs12格式的文件。
+## 1.2 导入客户端证书到keystore
+
+keystore不直接支持导入crt/key文件。所以首先先用openssl命令将证书转换为pkcs12格式的文件。p12文件可以同时包括证书和秘钥。
 
 ```
 openssl pkcs12 -export -in openapi-test-cert-foo.crt -inkey openapi-test-cert-foo.key > foo.p12
@@ -40,34 +53,19 @@ openssl pkcs12 -export -in openapi-test-cert-foo.crt -inkey openapi-test-cert-fo
 然后导入到keystore文件中
 
 ```
-keytool -importkeystore -destkeystore keystore -srckeystore foo.p12 -srcstoretype pkcs12
+keytool -importkeystore -destkeystore keystore.jks -srckeystore foo.p12 -srcstoretype pkcs12
 ```
 这步首先会要求你指定产生的keystore的密码。请记下这个密码，下面配置会用到。
 
 然后会要求你输入上一步指定的p12文件的密码，请输入之。
 
-## 步骤3，配置你的程序
+**注意**，本样例代码假设你的p12密码与keystore密码相同。
 
-你已经得到的两个文件"truststore"和"keystore"。在启动你的Java程序前，配置如下System Properties:
+# 2. 使用apiKey和apiSecret
 
-```
--Djavax.net.ssl.keyStoreType=jks
--Djavax.net.ssl.keyStore=keystore
--Djavax.net.ssl.keyStorePassword=[keystore的密码]
--Djavax.net.ssl.trustStoreType=jks
--Djavax.net.ssl.trustStore=juaicai-truststore
--Djavax.net.ssl.trustStorePassword=[truststore的密码]
-```
+盈米会提供商户一组apiKey和apiSecret用于产生请求签名。该算法详见//TODO。如下是一个Java产生签名的样例代码：
 
-然后启动程序。Java默认的SSLSocketFactory实例就会加载这个这些配置。
-
-此外可能有各种定制化的配置，例如合并truststore和keystore到一个文件；手工加载key文件，并创建SSLSocketFactory示例等。这里不再赘述。
-
-# 配置apiKey和apiSecret
-
-盈米会提供商户一组apiKey和apiSecret用于产生请求签名。给算法详见接口文档。如下是一个Java产生签名的样例代码：
-
-```
+```java
 String getSig(String method, String path, String apiSecret, Map<String, String> params) {
     StringBuilder sb = new StringBuilder();
     Set<String> keySet = new TreeSet<String>(params.keySet());
@@ -100,16 +98,49 @@ String getSig(String method, String path, String apiSecret, Map<String, String> 
 }
 ```
 
-# 发送请求
+# 3. 发送请求
 
 发送请求时请确保
 
-* 上面SSL配置产生的SSLSocketFactory在起作用
+* 上面SSL配置产生的SSLConnectionSocketFactory在起作用
 * 每个请求要添加必要的`key`, `ts`, `nonce`, `sigVer`等参数
 * 每个请求计算正确的请求签名，并以`sig`参数的形式发给服务器端
 
-
 盈米服务器会校验证书和请求签名。如果一切通过，会发送正确的结果。
+
+# 使用本样例代码
+
+假设
+
+* keystore路径为"keystore.jks"
+* truststore路径为"truststore.jks"
+* 密码均为123456
+* api key为abcdefg
+* api secret为ABCDEFG
+
+则使用以下命令调用盈米openapi的getFundsSearchInfo接口。
+
+```
+git clone git@github.com:yingmi/openapi-client-java.git
+cd openapi-client-java
+mvn clean package
+java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    -keystore keystore.jks \
+    -kp 123456 \
+    -truststore truststore.jks \
+    -tp 123456 \
+    -key abcefg \
+    -secret ABCDEFG
+```
+该接口会返回一个包含多个基金基本信息的JSON文本。
+
+使用
+
+```
+target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar -h
+```
+
+可以查看使用帮助
 
 
 
