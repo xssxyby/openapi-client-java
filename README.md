@@ -64,7 +64,7 @@ keytool -importkeystore -destkeystore keystore.jks -srckeystore foo.p12 -srcstor
 
 # 2. 使用apiKey和apiSecret
 
-盈米会提供商户一组apiKey和apiSecret用于产生请求签名。该算法详见//TODO。如下是一个Java产生签名的样例代码：
+盈米会提供商户一组apiKey和apiSecret用于产生请求签名。该算法详见[这里](https://github.com/yingmi/openapi-docs/blob/master/oepnapi公共参数和校验.md#请求签名产生方法)。如下是一个Java产生签名的样例代码：
 
 ```java
 String getSig(String method, String path, String apiSecret, Map<String, String> params) {
