@@ -1,14 +1,27 @@
 package net.frontnode.openapi;
 
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+import net.frontnode.openapi.model.Account;
+import net.frontnode.openapi.model.FundSearchInfo;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContexts;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -25,6 +38,7 @@ import java.util.*;
  * @author jiankuan
  *         21/10/2015.
  */
+@SuppressWarnings("unused")
 public class YingmiApiClient {
 
     private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
@@ -44,6 +58,10 @@ public class YingmiApiClient {
     private String trustStorePath;
 
     private String trustStorePassword;
+
+    private Logger logger = LoggerFactory.getLogger(YingmiApiClient.class);
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     public YingmiApiClient(String apiKey, String apiSecret, String keyStorePath, String keyStorePassword,
                            String trustStorePath, String trustStorePassword) {
@@ -77,18 +95,29 @@ public class YingmiApiClient {
         }
     }
 
-    public String getFundsSearchInfo() {
+    public List<FundSearchInfo> getFundsSearchInfo() {
+        String json = get("/product/getFundsSearchInfo", new HashMap<String, String>());
+        JavaType javaType = objectMapper.getTypeFactory().constructCollectionType(List.class, FundSearchInfo.class);
         try {
-            return get("/product/getFundsSearchInfo", new HashMap<String, String>());
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
+            List<FundSearchInfo> result = objectMapper.readValue(json, javaType);
+            return result;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
-    String get(String path, Map<String, String> params) throws URISyntaxException, IOException {
+    public String getFundFee(String fundCode) {
+        Map<String, String> params = new HashMap<>();
+        params.put("fundCode", fundCode);
+        return get("/product/getFundFee", new HashMap<String, String>());
+
+    }
+
+    public String createAccount(Account account) {
+        return post("/account/createAccount", account.asParamsMap());
+    }
+
+    String get(String path, Map<String, String> params) {
         String basePath = "/v1";
         URIBuilder builder = new URIBuilder().setScheme("https")
                 .setHost(host)
@@ -100,21 +129,66 @@ public class YingmiApiClient {
             builder.setParameter(key, params.get(key).toString());
         }
 
-        URI uri = builder.build();
+        try {
 
-        HttpGet httpGet = new HttpGet(uri);
-        HttpResponse resp = httpClient.execute(httpGet);
-        if (resp.getStatusLine().getStatusCode() >= 300) {
-            throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
+            URI uri = builder.build();
+
+            HttpGet httpGet = new HttpGet(uri);
+            HttpResponse resp = httpClient.execute(httpGet);
+            if (resp.getStatusLine().getStatusCode() >= 300) {
+                throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
+            }
+            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent()));
+            StringBuilder sb = new StringBuilder();
+            char[] buf = new char[1000];
+            int count;
+            while ((count = input.read(buf)) > 0) {
+                sb.append(buf, 0, count);
+            }
+            return sb.toString();
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
         }
-        BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent()));
-        StringBuilder sb = new StringBuilder();
-        char[] buf = new char[1000];
-        int count;
-        while ((count= input.read(buf)) > 0) {
-            sb.append(buf, 0, count);
+    }
+
+    String post(String path, Map<String, String> params) {
+        String basePath = "/v1";
+        URIBuilder builder = new URIBuilder().setScheme("https")
+                .setHost(host)
+                .setPath(basePath + path);
+        // clear the params with empty value
+        Map<String, String> trimmedParams = new HashMap<>();
+        for (String key: params.keySet()) {
+            if (params.get(key) != null) {
+                trimmedParams.put(key, params.get(key));
+            }
         }
-        return sb.toString();
+        addRequiredParams("POST", path, trimmedParams, apiKey, apiSecret);
+
+        try {
+            URI uri = builder.build();
+            RequestBuilder requestBuilder = RequestBuilder.post(uri);
+            List<NameValuePair> kvs = new ArrayList<>();
+            for (String key : trimmedParams.keySet()) {
+                kvs.add(new BasicNameValuePair(key, trimmedParams.get(key)));
+            }
+            requestBuilder.setEntity(new UrlEncodedFormEntity(kvs, "UTF-8"));
+            HttpUriRequest request = requestBuilder.build();
+            HttpResponse resp = httpClient.execute(request);
+            if (resp.getStatusLine().getStatusCode() >= 300) {
+                throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
+            }
+            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent()));
+            StringBuilder sb = new StringBuilder();
+            char[] buf = new char[1000];
+            int count;
+            while ((count = input.read(buf)) > 0) {
+                sb.append(buf, 0, count);
+            }
+            return sb.toString();
+        } catch (IOException | URISyntaxException e) {
+           throw new RuntimeException(e);
+        }
     }
 
     void addRequiredParams(String method, String path, Map<String, String> params, String apiKey, String apiSecret) {
@@ -129,8 +203,12 @@ public class YingmiApiClient {
 
     String getSig(String method, String path, String apiSecret, Map<String, String> params) {
         StringBuilder sb = new StringBuilder();
-        Set<String> keySet = new TreeSet<String>(params.keySet());
+        Set<String> keySet = new TreeSet<>(params.keySet());
         for (String key: keySet) {
+            String value = params.get(key);
+            if (value == null) {
+                continue;
+            }
             sb.append(key);
             sb.append("=");
             sb.append(params.get(key));
@@ -138,6 +216,7 @@ public class YingmiApiClient {
         }
         sb.setLength(sb.length() - 1); // trim the last "&"
         String unifiedString = method.toUpperCase() + ":" + path + ":" + sb.toString();
+        logger.debug("unified string: " + unifiedString);
 
         // calc hmac sha1
         try {
@@ -148,68 +227,10 @@ public class YingmiApiClient {
 
             // base64 encode the hmac
             String sig = Base64.getEncoder().encodeToString(hmac);
+            logger.debug("signature: " + sig);
             return sig;
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (InvalidKeyException e) {
-            e.printStackTrace();
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException(e);
         }
-
-        return null;
-    }
-
-    public static void main(String[] args) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
-
-        Options options = new Options();
-        options.addOption("keystore", true, "path of key store");
-        options.addOption("kp", true, "key store password");
-        options.addOption("truststore", true, "path of trust store");
-        options.addOption("tp", true, "trust store password");
-        options.addOption("key", true, "api key");
-        options.addOption("secret", true, "api secret");
-        options.addOption("h", "help", false, "show usage");
-
-        CommandLineParser commandLineParser = new DefaultParser();
-        CommandLine commandLine = null;
-        try {
-            commandLine = commandLineParser.parse(options, args);
-        } catch (ParseException e) {
-            showUsage(options);
-            System.exit(-1);
-        }
-
-        if (commandLine.hasOption("h")) {
-            showUsage(options);
-            System.exit(0);
-        }
-
-        Map<String, String> params = new HashMap<>();
-        String[] paramNames = new String[]{"keystore", "kp", "truststore", "tp", "key", "secret"};
-        for (String paramName: paramNames) {
-            if (commandLine.hasOption(paramName)) {
-                params.put(paramName, commandLine.getOptionValue(paramName));
-            } else {
-                System.err.println("缺少必要参数" + paramName);
-                showUsage(options);
-                System.exit(-1);
-            }
-        }
-
-        YingmiApiClient ac = new YingmiApiClient(
-                params.get("key"),
-                params.get("secret"),
-                params.get("keystore"),
-                params.get("kp"),
-                params.get("truststore"),
-                params.get("tp"));
-
-        // invoke the api
-        String fundsSearchInfo = ac.getFundsSearchInfo();
-        System.out.println(fundsSearchInfo);
-    }
-
-    private static void showUsage(Options options) {
-        HelpFormatter helpFormatter = new HelpFormatter();
-        helpFormatter.printHelp("openapi-client",  options);
     }
 }
