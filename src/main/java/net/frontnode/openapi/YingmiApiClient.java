@@ -138,7 +138,7 @@ public class YingmiApiClient {
             if (resp.getStatusLine().getStatusCode() >= 300) {
                 throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
             }
-            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent()));
+            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent(), "UTF-8"));
             StringBuilder sb = new StringBuilder();
             char[] buf = new char[1000];
             int count;
@@ -178,7 +178,7 @@ public class YingmiApiClient {
             if (resp.getStatusLine().getStatusCode() >= 300) {
                 throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
             }
-            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent()));
+            BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent(), "UTF-8"));
             StringBuilder sb = new StringBuilder();
             char[] buf = new char[1000];
             int count;
