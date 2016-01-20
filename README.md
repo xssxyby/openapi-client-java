@@ -8,6 +8,7 @@
 * **yingmi-openapi-root-ca.crt（测试环境)/yingmi.cn.crt-chain(生产环境）** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * **openapi-[环境]-cert-[商户名].crt** － 客户端证书文件，用于盈米服务器验证客户端
 * **openapi-[环境]-cert-[商户名].key** － 客户端证书文件的秘钥文件
+* **openapi-[环境]-cert-[商户名].p12** － 客户端证书文件的p12格式文件
 * **api key** － 一个长字符串，用于唯一标志接入商户
 * **api secret**  一个长字符串，用于产生请求签名
 
@@ -43,13 +44,15 @@ keytool -import -keystore truststore.jks -file path/to/yingmi-openapi-root-ca.cr
 
 ## 1.2 导入客户端证书到keystore
 
-keystore不直接支持导入crt/key文件。所以首先先用openssl命令将证书转换为pkcs12格式的文件。p12文件可以同时包括证书和秘钥。
+keystore不直接支持导入crt/key文件。所以首先先用openssl命令将证书转换为pkcs12格式(.p12)的文件。p12文件可以同时包括证书和秘钥
+
+> 此步骤先安装opnessl命令。为了方便盈米直接在发布证书时会直接发一个p12文件。如果不方便自己转换，可以直接使用盈米提供的p12文件，同时忽略该步骤。
 
 ```
 openssl pkcs12 -export -in openapi-test-cert-foo.crt -inkey openapi-test-cert-foo.key > foo.p12
 ```
 
-此时会提示指定导出的p12文件密码。请记下这个密码，下一步会用到。
+此时会提示指定导出的p12文件密码。请记下这个密码，下一步会用到。盈米提供的p12文件的密码统一为*123456*。
 
 然后导入到keystore文件中
 
