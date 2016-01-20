@@ -5,7 +5,7 @@
 
 在与盈米联系联系确认要接入openapi后，盈米会提供一组文件／key用于接入。
 
-* **yingmi-openapi-root-ca.crt** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
+* **yingmi-openapi-root-ca.crt（测试环境)/yingmi.cn.crt-chain(生产环境）** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * **openapi-[环境]-cert-[商户名].crt** － 客户端证书文件，用于盈米服务器验证客户端
 * **openapi-[环境]-cert-[商户名].key** － 客户端证书文件的秘钥文件
 * **api key** － 一个长字符串，用于唯一标志接入商户
