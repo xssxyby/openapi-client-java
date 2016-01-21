@@ -2,14 +2,11 @@ package net.frontnode.openapi;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import net.frontnode.openapi.model.Account;
 import net.frontnode.openapi.model.FundSearchInfo;
-import org.apache.commons.cli.*;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -17,6 +14,7 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContexts;
@@ -49,7 +47,7 @@ public class YingmiApiClient {
 
     private String apiSecret;
 
-    private HttpClient httpClient;
+    private CloseableHttpClient httpClient;
 
     private String keyStorePath;
 
@@ -63,6 +61,8 @@ public class YingmiApiClient {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    private SSLConnectionSocketFactory sf;
+
     public YingmiApiClient(String apiKey, String apiSecret, String keyStorePath, String keyStorePassword,
                            String trustStorePath, String trustStorePassword) {
         this.apiKey = apiKey;
@@ -72,7 +72,6 @@ public class YingmiApiClient {
         this.trustStorePath = trustStorePath;
         this.trustStorePassword = trustStorePassword;
 
-        // load key store
         try {
 
             SSLContext context = SSLContexts.custom()
@@ -82,17 +81,22 @@ public class YingmiApiClient {
                     .loadTrustMaterial(new File(this.trustStorePath),
                             this.trustStorePassword.toCharArray())
                     .build();
-            SSLConnectionSocketFactory sf = new SSLConnectionSocketFactory(
+            sf = new SSLConnectionSocketFactory(
                     context,
-                    new String[] {"TLSv1.2"},
+                    new String[]{"TLSv1.2"},
                     null,
                     SSLConnectionSocketFactory.getDefaultHostnameVerifier());
 
-            httpClient = HttpClients.custom().setSSLSocketFactory(sf).build();
-
         } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableKeyException | KeyManagementException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+
         }
+    }
+
+
+    private HttpClient createConnection() {
+        httpClient = HttpClients.custom().setSSLSocketFactory(sf).build();
+        return httpClient;
     }
 
     public List<FundSearchInfo> getFundsSearchInfo() {
@@ -134,7 +138,7 @@ public class YingmiApiClient {
             URI uri = builder.build();
 
             HttpGet httpGet = new HttpGet(uri);
-            HttpResponse resp = httpClient.execute(httpGet);
+            HttpResponse resp = createConnection().execute(httpGet);
             if (resp.getStatusLine().getStatusCode() >= 300) {
                 System.err.println("Something wrong: " + resp.getStatusLine().toString());
             }
@@ -148,6 +152,14 @@ public class YingmiApiClient {
             return sb.toString();
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
+        } finally {
+            try {
+                if (httpClient != null)
+                    httpClient.close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+        }
+
         }
     }
 
@@ -174,7 +186,7 @@ public class YingmiApiClient {
             }
             requestBuilder.setEntity(new UrlEncodedFormEntity(kvs, "UTF-8"));
             HttpUriRequest request = requestBuilder.build();
-            HttpResponse resp = httpClient.execute(request);
+            HttpResponse resp = createConnection().execute(request);
             if (resp.getStatusLine().getStatusCode() >= 300) {
                 System.err.println("Something wrong: " + resp.getStatusLine().toString());
             }
@@ -188,6 +200,14 @@ public class YingmiApiClient {
             return sb.toString();
         } catch (IOException | URISyntaxException e) {
            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (httpClient != null)
+                    httpClient.close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+
         }
     }
 

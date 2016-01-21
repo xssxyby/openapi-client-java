@@ -3,7 +3,9 @@ package net.frontnode.openapi;
 import net.frontnode.openapi.model.FundSearchInfo;
 import org.apache.commons.cli.*;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
@@ -26,7 +28,9 @@ public class MainApp {
         options.addOption("tp", true, "trust store password");
         options.addOption("key", true, "api key");
         options.addOption("secret", true, "api secret");
+        options.addOption("event", false, "show yingmi event sample");
         options.addOption("h", "help", false, "show usage");
+
 
         CommandLineParser commandLineParser = new DefaultParser();
         CommandLine commandLine = null;
@@ -54,22 +58,52 @@ public class MainApp {
             }
         }
 
-        YingmiApiClient ac = new YingmiApiClient(
-                params.get("key"),
-                params.get("secret"),
-                params.get("keystore"),
-                params.get("kp"),
-                params.get("truststore"),
-                params.get("tp"));
+        if (commandLine.hasOption("event")) {
 
-        // invoke the api
-        List<FundSearchInfo> funds = ac.getFundsSearchInfo();
-        for (FundSearchInfo fund: funds) {
-            System.out.println(fund.fundCode);
-            System.out.println(fund.fundName);
-            System.out.println("============");
+            YingmiEventClient ac = new YingmiEventClient(
+                    params.get("key"),
+                    params.get("secret"),
+                    params.get("keystore"),
+                    params.get("kp"),
+                    params.get("truststore"),
+                    params.get("tp"));
+
+            Thread yingmiClientThread = new Thread(ac);
+
+            yingmiClientThread.start();
+
+            System.out.println("开始监听Event....");
+
+            while (true) {
+
+                BufferedReader strin = new BufferedReader(new InputStreamReader(System.in));
+                System.out.print("输入'X'结束监听：");
+                String str = strin.readLine();
+
+                if ("X".equals(str.toUpperCase())) {
+                    YingmiEventClient.setIsRunning(false);
+                    break;
+                }
+            }
+        } else {
+
+            YingmiApiClient ac = new YingmiApiClient(
+                    params.get("key"),
+                    params.get("secret"),
+                    params.get("keystore"),
+                    params.get("kp"),
+                    params.get("truststore"),
+                    params.get("tp"));
+
+            // invoke the api
+            List<FundSearchInfo> funds = ac.getFundsSearchInfo();
+            for (FundSearchInfo fund : funds) {
+                System.out.println(fund.fundCode);
+                System.out.println(fund.fundName);
+                System.out.println("============");
+            }
+            System.out.println(String.format("总共%d只基金", funds.size()));
         }
-        System.out.println(String.format("总共%d只基金", funds.size()));
     }
 
     private static void showUsage(Options options) {
