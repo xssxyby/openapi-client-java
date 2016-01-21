@@ -37,7 +37,7 @@ import java.util.*;
  *         21/10/2015.
  */
 @SuppressWarnings("unused")
-public class YingmiApiClient {
+public abstract class YingmiApiClient {
 
     private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
 
@@ -59,7 +59,6 @@ public class YingmiApiClient {
 
     private Logger logger = LoggerFactory.getLogger(YingmiApiClient.class);
 
-    private ObjectMapper objectMapper = new ObjectMapper();
 
     private SSLConnectionSocketFactory sf;
 
@@ -99,29 +98,10 @@ public class YingmiApiClient {
         return httpClient;
     }
 
-    public List<FundSearchInfo> getFundsSearchInfo() {
-        String json = get("/product/getFundsSearchInfo", new HashMap<String, String>());
-        JavaType javaType = objectMapper.getTypeFactory().constructCollectionType(List.class, FundSearchInfo.class);
-        try {
-            List<FundSearchInfo> result = objectMapper.readValue(json, javaType);
-            return result;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    public String getFundFee(String fundCode) {
-        Map<String, String> params = new HashMap<>();
-        params.put("fundCode", fundCode);
-        return get("/product/getFundFee", new HashMap<String, String>());
 
-    }
 
-    public String createAccount(Account account) {
-        return post("/account/createAccount", account.asParamsMap());
-    }
-
-    String get(String path, Map<String, String> params) {
+    protected String get(String path, Map<String, String> params) {
         String basePath = "/v1";
         URIBuilder builder = new URIBuilder().setScheme("https")
                 .setHost(host)
@@ -163,7 +143,7 @@ public class YingmiApiClient {
         }
     }
 
-    String post(String path, Map<String, String> params) {
+    protected String post(String path, Map<String, String> params) {
         String basePath = "/v1";
         URIBuilder builder = new URIBuilder().setScheme("https")
                 .setHost(host)
@@ -253,4 +233,9 @@ public class YingmiApiClient {
             throw new RuntimeException(e);
         }
     }
+
+
+
+    public abstract String begin(Object objects);
+
 }

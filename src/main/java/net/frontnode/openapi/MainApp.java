@@ -1,16 +1,14 @@
 package net.frontnode.openapi;
 
-import net.frontnode.openapi.model.FundSearchInfo;
+import net.frontnode.openapi.service.EventService;
+import net.frontnode.openapi.service.FundFeeService;
 import org.apache.commons.cli.*;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -60,7 +58,7 @@ public class MainApp {
 
         if (commandLine.hasOption("event")) {
 
-            YingmiEventClient ac = new YingmiEventClient(
+            EventService ac = new EventService(
                     params.get("key"),
                     params.get("secret"),
                     params.get("keystore"),
@@ -68,26 +66,12 @@ public class MainApp {
                     params.get("truststore"),
                     params.get("tp"));
 
-            Thread yingmiClientThread = new Thread(ac);
+            ac.begin(null);
+            System.out.println("监听结束");
 
-            yingmiClientThread.start();
-
-            System.out.println("开始监听Event....");
-
-            while (true) {
-
-                BufferedReader strin = new BufferedReader(new InputStreamReader(System.in));
-                System.out.print("输入'X'结束监听：");
-                String str = strin.readLine();
-
-                if ("X".equals(str.toUpperCase())) {
-                    YingmiEventClient.setIsRunning(false);
-                    break;
-                }
-            }
         } else {
 
-            YingmiApiClient ac = new YingmiApiClient(
+            YingmiApiClient ac = new FundFeeService(
                     params.get("key"),
                     params.get("secret"),
                     params.get("keystore"),
@@ -95,14 +79,8 @@ public class MainApp {
                     params.get("truststore"),
                     params.get("tp"));
 
-            // invoke the api
-            List<FundSearchInfo> funds = ac.getFundsSearchInfo();
-            for (FundSearchInfo fund : funds) {
-                System.out.println(fund.fundCode);
-                System.out.println(fund.fundName);
-                System.out.println("============");
-            }
-            System.out.println(String.format("总共%d只基金", funds.size()));
+            String fundFee = ac.begin("270004");
+            System.out.println(String.format("基金代码{%s}的费率{}", "270004", fundFee));
         }
     }
 
