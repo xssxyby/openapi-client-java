@@ -8,8 +8,8 @@ import net.frontnode.openapi.model.Account;
  */
 public class AccountService extends YingmiApiClient {
 
-    public String begin(Object objects) {
-        Account account = (Account)objects;
+    public String begin(Object object) {
+        Account account = (Account)object;
         return post("/account/createAccount", account.asParamsMap());
     }
 

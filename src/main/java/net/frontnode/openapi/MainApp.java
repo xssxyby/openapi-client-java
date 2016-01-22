@@ -3,6 +3,8 @@ package net.frontnode.openapi;
 import net.frontnode.openapi.service.EventService;
 import net.frontnode.openapi.service.FundFeeService;
 import org.apache.commons.cli.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.KeyStoreException;
@@ -16,6 +18,9 @@ import java.util.Map;
  *         9/11/15.
  */
 public class MainApp {
+
+    private static Logger logger = LoggerFactory.getLogger(MainApp.class);
+
 
     public static void main(String[] args) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
 
@@ -58,7 +63,7 @@ public class MainApp {
 
         if (commandLine.hasOption("event")) {
 
-            EventService ac = new EventService(
+            EventService es = new EventService(
                     params.get("key"),
                     params.get("secret"),
                     params.get("keystore"),
@@ -66,8 +71,8 @@ public class MainApp {
                     params.get("truststore"),
                     params.get("tp"));
 
-            ac.begin(null);
-            System.out.println("监听结束");
+            es.begin(null);
+            logger.debug("监听结束");
 
         } else {
 
@@ -80,7 +85,7 @@ public class MainApp {
                     params.get("tp"));
 
             String fundFee = ac.begin("270004");
-            System.out.println(String.format("基金代码{%s}的费率{}", "270004", fundFee));
+            logger.debug(String.format("基金代码{%s}的费率{}", "270004", fundFee));
         }
     }
 

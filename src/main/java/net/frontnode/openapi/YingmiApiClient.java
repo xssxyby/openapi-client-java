@@ -120,7 +120,7 @@ public abstract class YingmiApiClient {
             HttpGet httpGet = new HttpGet(uri);
             HttpResponse resp = createConnection().execute(httpGet);
             if (resp.getStatusLine().getStatusCode() >= 300) {
-                System.err.println("Something wrong: " + resp.getStatusLine().toString());
+                logger.error("Something wrong: " + resp.getStatusLine().toString());
             }
             BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent(), "UTF-8"));
             StringBuilder sb = new StringBuilder();
@@ -168,7 +168,7 @@ public abstract class YingmiApiClient {
             HttpUriRequest request = requestBuilder.build();
             HttpResponse resp = createConnection().execute(request);
             if (resp.getStatusLine().getStatusCode() >= 300) {
-                System.err.println("Something wrong: " + resp.getStatusLine().toString());
+                logger.error("Something wrong: " + resp.getStatusLine().toString());
             }
             BufferedReader input = new BufferedReader(new InputStreamReader(resp.getEntity().getContent(), "UTF-8"));
             StringBuilder sb = new StringBuilder();

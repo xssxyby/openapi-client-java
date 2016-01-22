@@ -11,9 +11,9 @@ import java.util.Map;
 public class FundFeeService extends YingmiApiClient {
 
 
-    public String begin(Object fundCode) {
+    public String begin(Object object) {
         Map<String, String> params = new HashMap<>();
-        params.put("fundCode", (String)fundCode);
+        params.put("fundCode", (String)object);
         return get("/product/getFundFee", new HashMap<String, String>());
 
     }

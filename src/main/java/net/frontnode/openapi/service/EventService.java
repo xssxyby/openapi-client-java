@@ -2,9 +2,11 @@ package net.frontnode.openapi.service;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import net.frontnode.openapi.Event.DealFundInfoMessage;
-import net.frontnode.openapi.Event.DealMessageInterface;
+import net.frontnode.openapi.Event.FundInfoUpdateEventHandle;
+import net.frontnode.openapi.Event.IEventHandle;
 import net.frontnode.openapi.YingmiApiClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -17,13 +19,16 @@ import java.util.Map;
  */
 public class EventService extends YingmiApiClient implements Runnable {
 
+    private Logger logger = LoggerFactory.getLogger(EventService.class);
+
+
     public static Integer afterEventId = null;
 
     private static Integer timeout = 200;
 
-    private static boolean isRunning;
+    private volatile boolean isRunning;
 
-    public static void setIsRunning(boolean run) {
+    public void setIsRunning(boolean run) {
        isRunning = run;
     }
 
@@ -47,7 +52,7 @@ public class EventService extends YingmiApiClient implements Runnable {
 
     }
 
-    DealMessageInterface dealInterface;
+    IEventHandle dealInterface;
 
     public void run() {
 
@@ -61,10 +66,11 @@ public class EventService extends YingmiApiClient implements Runnable {
                 for (int i = 0; i < jsonArray.size(); i++) {
 
                     JSONObject jsonObject = (JSONObject) jsonArray.get(i);
-                    System.out.println(jsonArray.get(i));
+
+                    logger.debug("接受信息内容：{}", jsonArray.get(i));
 
                     if ("FUND_INFO_UPDATE".equals(jsonObject.get("type")))
-                        dealInterface = new DealFundInfoMessage();
+                        dealInterface = new FundInfoUpdateEventHandle();
                     //todo other event type
 
                     dealInterface.dealMessage((JSONObject) jsonObject.get("content"));
@@ -83,17 +89,17 @@ public class EventService extends YingmiApiClient implements Runnable {
 
         yingmiClientThread.start();
 
-        System.out.println("开始监听Event....");
+        logger.debug("开始监听Event....");
 
         try {
             while (true) {
 
                 BufferedReader strin = new BufferedReader(new InputStreamReader(System.in));
-                System.out.print("输入'X'结束监听：");
+                logger.debug("输入'X'结束监听：");
                 String str = strin.readLine();
 
                 if ("X".equals(str.toUpperCase())) {
-                    EventService.setIsRunning(false);
+                    setIsRunning(false);
                     break;
                 }
             }
@@ -101,7 +107,7 @@ public class EventService extends YingmiApiClient implements Runnable {
             ioe.printStackTrace();
         }
 
-        return "Finish";
+        return null;
     }
 
 }
