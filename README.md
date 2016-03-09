@@ -136,7 +136,20 @@ java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
     -key abcefg \
     -secret ABCDEFG
 ```
-该接口会返回一个包含多个基金基本信息的JSON文本。
+该接口会连接到"https://api-test.frontnode.net"测试环境，返回一个包含多个基金基本信息的JSON文本。
+
+如要连接到生产环境，则需要明确指出要连接的主机名，并且配合生产环境使用的证书、api key和api secret。
+
+```
+java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    -host api.yingmi.cn \
+    -keystore keystore-prod.jks \
+    -kp 123456 \
+    -truststore truststore-prod.jks \
+    -tp 123456 \
+    -key abcefg \
+    -secret ABCDEFG
+```
 
 使用
 
