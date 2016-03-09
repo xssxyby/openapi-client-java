@@ -20,6 +20,7 @@ public class MainApp {
     public static void main(String[] args) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
 
         Options options = new Options();
+        options.addOption("host", true, "yingmi openapi host name, default is \"api-test.frontnode.net\"");
         options.addOption("keystore", true, "path of key store");
         options.addOption("kp", true, "key store password");
         options.addOption("truststore", true, "path of trust store");
@@ -54,7 +55,11 @@ public class MainApp {
             }
         }
 
+        // optional param 'host'
+        params.put("host", commandLine.getOptionValue("host"));
+
         YingmiApiClient ac = new YingmiApiClient(
+                params.get("host"),
                 params.get("key"),
                 params.get("secret"),
                 params.get("keystore"),

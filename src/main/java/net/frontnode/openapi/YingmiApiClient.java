@@ -63,8 +63,9 @@ public class YingmiApiClient {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public YingmiApiClient(String apiKey, String apiSecret, String keyStorePath, String keyStorePassword,
+    public YingmiApiClient(String host, String apiKey, String apiSecret, String keyStorePath, String keyStorePassword,
                            String trustStorePath, String trustStorePassword) {
+        if (host != null) this.host = host;
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
         this.keyStorePath = keyStorePath;

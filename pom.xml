@@ -56,7 +56,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>net.frontnode.openapi.YingmiApiClient</mainClass>
+                            <mainClass>net.frontnode.openapi.MainApp</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
