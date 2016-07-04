@@ -20,13 +20,12 @@ public class MainApp {
     public static void main(String[] args) throws KeyStoreException, CertificateException, NoSuchAlgorithmException, IOException {
 
         Options options = new Options();
-        options.addOption("host", true, "yingmi openapi host name, default is \"api-test.frontnode.net\"");
-        options.addOption("keystore", true, "path of key store");
-        options.addOption("kp", true, "key store password");
-        options.addOption("truststore", true, "path of trust store");
-        options.addOption("tp", true, "trust store password");
+        options.addOption("host", true, "yingmi openapi host name");
         options.addOption("key", true, "api key");
         options.addOption("secret", true, "api secret");
+        options.addOption("keytype",true,"keystore type, use -Djavax.net.ssl.keyStoreType if absent, falls back to 'jks'");
+        options.addOption("keystore", true, "keystor path, use -Djavax.net.ssl.keyStore if absent");
+        options.addOption("keypass", true, "keystore password, use -Djavax.net.ssl.keyStorePassword if absent");
         options.addOption("h", "help", false, "show usage");
 
         CommandLineParser commandLineParser = new DefaultParser();
@@ -44,7 +43,7 @@ public class MainApp {
         }
 
         Map<String, String> params = new HashMap<>();
-        String[] paramNames = new String[]{"keystore", "kp", "truststore", "tp", "key", "secret"};
+        String[] paramNames = new String[]{"host", "key", "secret"};
         for (String paramName: paramNames) {
             if (commandLine.hasOption(paramName)) {
                 params.put(paramName, commandLine.getOptionValue(paramName));
@@ -55,18 +54,20 @@ public class MainApp {
             }
         }
 
-        // optional param 'host'
-        params.put("host", commandLine.getOptionValue("host"));
-
+        // optional params
+        params.put("keytype", commandLine.getOptionValue("keytype",System.getProperty("javax.net.ssl.keyStoreType","jks")));
+        params.put("keystore", commandLine.getOptionValue("keystore",System.getProperty("javax.net.ssl.keyStore")));
+        params.put("keypass", commandLine.getOptionValue("keypass",System.getProperty("javax.net.ssl.keyStorePassword")) );
+        
         YingmiApiClient ac = new YingmiApiClient(
                 params.get("host"),
                 params.get("key"),
                 params.get("secret"),
+                params.get("keytype"),
                 params.get("keystore"),
-                params.get("kp"),
-                params.get("truststore"),
-                params.get("tp"));
-
+                params.get("keypass")
+                );
+        
         // invoke the api
         List<FundSearchInfo> funds = ac.getFundsSearchInfo();
         for (FundSearchInfo fund: funds) {

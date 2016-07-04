@@ -19,51 +19,39 @@
 
 # 1. 配置SSL证书
 
-盈米openapi采用双向SSL校验，因此客户端需要：
+盈米openapi采用双向SSL校验，因此客户端在建立TLS连接过程中需要使用客户端证书
 
 * yingmi-openapi-root-ca.crt － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
-* openapi-[环境]-cert-[商户名].crt － 客户端证书文件，用于盈米服务器验证客户端
-* openapi-[环境]-cert-[商户名].key － 客户端证书文件的秘钥文件
+* openapi-[环境]-cert-[商户号].crt － PEM格式的客户端证书文件，用于盈米服务器验证客户端 (Java 应用不使用 )
+* openapi-[环境]-cert-[商户号].key － PEM格式的客户端证书文件的私钥文件 (Java 应用不使用)
+* openapi-[环境]-cert-[商户号].p12 － PKCS12 格式的客户端证书文件(含私钥), 默认密码为 “123456”
 
-其中“环境”可能是`test`或者`prod`分别对应测试环境和生产环境。商户名是唯一的商户名称。（下文举例使用`test`，商户名用`foo`）.
+其中“环境”可能是`test`或者`prod`分别对应测试环境和生产环境。商户名是唯一的商户名称。（下文举例使用`test`，商户名用`0000`）.
 
-在Java中，根据JSSE的规范，证书需要先导入到truststore／keystore文件，才能被Java识别和使用。
+## 将盈米 OpenAPI 服务器的根证书（root ca）导入应用的truststore 有三种方式
 
-步骤为：
-
-## 1.1 盈米openapi根证书（root ca）到truststore
-
-```
-keytool -import -keystore truststore.jks -file path/to/yingmi-openapi-root-ca.crt -alias yingmica
-```
-命令行会提示输入一个truststore的密码。请记下这个密码，下面配置会用到。
-
-命令行还会提示“是否要信任该证书”，输入“Y”，并回车确认。
-
-成功后，该命令会产生一个名称为"truststore.jks"的文件。
-
-## 1.2 导入客户端证书到keystore
-
-keystore不直接支持导入crt/key文件。所以首先先用openssl命令将证书转换为pkcs12格式(.p12)的文件。p12文件可以同时包括证书和秘钥
-
-> 此步骤先安装opnessl命令。为了方便盈米直接在发布证书时会直接发一个p12文件。如果不方便自己转换，可以直接使用盈米提供的p12文件，同时忽略该步骤。
+### 方式1 将盈米OpenAPI 开发/生产环境的证书CA加入系统默认信任证书(如果您的应用除了访问盈米OpenAPI外还需要访问其它TLS资源)
 
 ```
-openssl pkcs12 -export -in openapi-test-cert-foo.crt -inkey openapi-test-cert-foo.key > foo.p12
-```
-
-此时会提示指定导出的p12文件密码。请记下这个密码，下一步会用到。盈米提供的p12文件的密码统一为*123456*。
-
-然后导入到keystore文件中
+cp $JAVA_HOME/jre/lib/security/cacerts ~
+keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias yingmica -storepass changeit
 
 ```
-keytool -importkeystore -destkeystore keystore.jks -srckeystore foo.p12 -srcstoretype pkcs12
+
+### 方式2 创建只包含盈米 OpenAPI 开发/生产环境CA证书的 truststore
 ```
-这步首先会要求你指定产生的keystore的密码。请记下这个密码，下面配置会用到。
+keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias yingmica -storepass changeit
+```
+命令行会提示“是否要信任该证书”，输入“Y”，并回车确认。
 
-然后会要求你输入上一步指定的p12文件的密码，请输入之。
+### 方式3 直接使用盈米提供的已经包含了 JRE 默认信任的公开CA证书以及盈米OpenAPI 开发/生产环境CA证书的  cacerts 文件
 
-**注意**，本样例代码假设你的p12密码与keystore密码相同。
+### 备注
+
+由于历史原因, 盈米 OpenAPI 开发环境 https://api-test.frontnode.net 使用了盈米自签发的服务器证书, 该自签发证书将被废弃, 与生产环境一样使用由公开的证书签发机构(StartCOM Certificate Authority SHA256)签发的服务器证书。为了便于平滑过渡, 我们提供了两个证书的 PEM 格式文件, 建议都导入到 cacerts 文件中.
+
+由于StartCOM CA证书尚未被 Oracle 纳入Java默认受信任的证书库 $JAVA_HOME/jre/lib/security/cacerts 中, 因此需要将该证书导入到应用信任的cacerts 证书库中.
+
 
 # 2. 使用apiKey和apiSecret
 
@@ -116,9 +104,10 @@ String getSig(String method, String path, String apiSecret, Map<String, String> 
 
 假设
 
-* keystore路径为"keystore.jks"
-* truststore路径为"truststore.jks"
-* 密码均为123456
+* 客户端证书的路径为 "openapi-test-cert-0000.p12"
+* 客户端证书的密码为 "123456"
+* truststore路径为 "cacerts"
+* truststore密码为 "changeit"
 * api key为abcdefg
 * api secret为ABCDEFG
 
@@ -128,11 +117,14 @@ String getSig(String method, String path, String apiSecret, Map<String, String> 
 git clone git@github.com:yingmi/openapi-client-java.git
 cd openapi-client-java
 mvn clean package
-java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
-    -keystore keystore.jks \
-    -kp 123456 \
-    -truststore truststore.jks \
-    -tp 123456 \
+java \
+	-Djavax.net.ssl.trustStore=cacerts \
+	-Djavax.net.ssl.trustStorePassword=changeit \
+	-Djavax.net.ssl.keyStoreType=pkcs12 \
+	-Djavax.net.ssl.keyStore=openapi-test-cert-0000.p12 \
+	-Djavax.net.ssl.keyStorePassword=123456 \
+    -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
+    -host api-test.frontnode.net \
     -key abcefg \
     -secret ABCDEFG
 ```
@@ -141,12 +133,14 @@ java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
 如要连接到生产环境，则需要明确指出要连接的主机名，并且配合生产环境使用的证书、api key和api secret。
 
 ```
-java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
+java \
+	-Djavax.net.ssl.trustStore=cacerts \
+	-Djavax.net.ssl.trustStorePassword=changeit \
+	-Djavax.net.ssl.keyStoreType=pkcs12 \
+	-Djavax.net.ssl.keyStore=openapi-prod-cert-0000.p12 \
+	-Djavax.net.ssl.keyStorePassword=123456 \
+	-jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
     -host api.yingmi.cn \
-    -keystore keystore-prod.jks \
-    -kp 123456 \
-    -truststore truststore-prod.jks \
-    -tp 123456 \
     -key abcefg \
     -secret ABCDEFG
 ```
@@ -158,8 +152,3 @@ java -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar -h
 ```
 
 可以查看使用帮助.
-
-
-
-
-
