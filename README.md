@@ -104,9 +104,9 @@ String getSig(String method, String path, String apiSecret, Map<String, String> 
 
 假设
 
-* 客户端证书的路径为 ~/openapi-test-cert-0000.p12
-* 客户端证书的密码为 “123456”
-* truststore路径为 "~/cacerts"
+* 客户端证书的路径为 "openapi-test-cert-0000.p12"
+* 客户端证书的密码为 "123456"
+* truststore路径为 "cacerts"
 * truststore密码为 "changeit"
 * api key为abcdefg
 * api secret为ABCDEFG
@@ -118,10 +118,10 @@ git clone git@github.com:yingmi/openapi-client-java.git
 cd openapi-client-java
 mvn clean package
 java \
-	-Djavax.net.ssl.trustStore=~/cacerts \
+	-Djavax.net.ssl.trustStore=cacerts \
 	-Djavax.net.ssl.trustStorePassword=changeit \
 	-Djavax.net.ssl.keyStoreType=pkcs12 \
-	-Djavax.net.ssl.keyStore=~/openapi-test-cert-0000.p12 \
+	-Djavax.net.ssl.keyStore=openapi-test-cert-0000.p12 \
 	-Djavax.net.ssl.keyStorePassword=123456 \
     -jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
     -host api-test.frontnode.net \
@@ -134,10 +134,10 @@ java \
 
 ```
 java \
-	-Djavax.net.ssl.trustStore=~/cacerts \
+	-Djavax.net.ssl.trustStore=cacerts \
 	-Djavax.net.ssl.trustStorePassword=changeit \
 	-Djavax.net.ssl.keyStoreType=pkcs12 \
-	-Djavax.net.ssl.keyStore=~/openapi-prod-cert-0000.p12 \
+	-Djavax.net.ssl.keyStore=openapi-prod-cert-0000.p12 \
 	-Djavax.net.ssl.keyStorePassword=123456 \
 	-jar target/openapi-client-1.0-SNAPSHOT-jar-with-dependencies.jar \
     -host api.yingmi.cn \
