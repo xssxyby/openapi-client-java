@@ -30,7 +30,7 @@
 
 ## 将盈米 OpenAPI 服务器的根证书（root ca）导入应用的truststore 有三种方式
 
-方式1 将盈米OpenAPI 开发/生产环境的证书CA加入系统默认信任证书(如果您的应用除了访问盈米OpenAPI外还需要访问其它TLS资源)
+### 方式1 将盈米OpenAPI 开发/生产环境的证书CA加入系统默认信任证书(如果您的应用除了访问盈米OpenAPI外还需要访问其它TLS资源)
 
 ```
 cp $JAVA_HOME/jre/lib/security/cacerts ~
@@ -38,15 +38,20 @@ keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias ying
 
 ```
 
-方式2 创建只包含盈米 OpenAPI 开发/生产环境CA证书的 truststore
+### 方式2 创建只包含盈米 OpenAPI 开发/生产环境CA证书的 truststore
 ```
 keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias yingmica -storepass changeit
 ```
 命令行会提示“是否要信任该证书”，输入“Y”，并回车确认。
 
-方式3 直接使用盈米提供的已经包含了 JRE 默认信任的公开CA证书以及盈米OpenAPI 开发/生产环境CA证书的  cacerts 文件
+### 方式3 直接使用盈米提供的已经包含了 JRE 默认信任的公开CA证书以及盈米OpenAPI 开发/生产环境CA证书的  cacerts 文件
 
-成功后，该命令会产生一个名称为"app-trustcerts.jks"的文件。
+### 备注
+
+由于历史原因, 盈米 OpenAPI 开发环境 https://api-test.frontnode.net 使用了盈米自签发的服务器证书, 该自签发证书将被废弃, 与生产环境一样使用由公开的证书签发机构(StartCOM Certificate Authority SHA256)签发的服务器证书。为了便于平滑过渡, 我们提供了两个证书的 PEM 格式文件, 建议都导入到 cacerts 文件中.
+
+由于StartCOM CA证书尚未被 Oracle 纳入Java默认受信任的证书库 $JAVA_HOME/jre/lib/security/cacerts 中, 因此需要将该证书导入到应用信任的cacerts 证书库中.
+
 
 # 2. 使用apiKey和apiSecret
 
