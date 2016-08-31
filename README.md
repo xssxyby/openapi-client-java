@@ -5,7 +5,6 @@
 
 在与盈米联系联系确认要接入openapi后，盈米会提供一组文件／key用于接入。
 
-* **yingmi-openapi-root-ca.crt（测试环境)/yingmi.cn.crt-chain(生产环境）** － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * **openapi-[环境]-cert-[商户名].crt** － 客户端证书文件，用于盈米服务器验证客户端
 * **openapi-[环境]-cert-[商户名].key** － 客户端证书文件的秘钥文件
 * **openapi-[环境]-cert-[商户名].p12** － 客户端证书文件的p12格式文件
@@ -21,36 +20,25 @@
 
 盈米openapi采用双向SSL校验，因此客户端在建立TLS连接过程中需要使用客户端证书
 
-* yingmi-openapi-root-ca.crt － 盈米openapi的根证书，用于接口客户端验证盈米的服务器
 * openapi-[环境]-cert-[商户号].crt － PEM格式的客户端证书文件，用于盈米服务器验证客户端 (Java 应用不使用 )
 * openapi-[环境]-cert-[商户号].key － PEM格式的客户端证书文件的私钥文件 (Java 应用不使用)
 * openapi-[环境]-cert-[商户号].p12 － PKCS12 格式的客户端证书文件(含私钥), 默认密码为 “123456”
 
 其中“环境”可能是`test`或者`prod`分别对应测试环境和生产环境。商户名是唯一的商户名称。（下文举例使用`test`，商户名用`0000`）.
 
-## 将盈米 OpenAPI 服务器的根证书（root ca）导入应用的truststore 有三种方式
+在JAVA环境下客户端证书需要配置为keystore才可以使用。keystore可以采用PKCS12格式（.p12)。为此我们需要将crt／key文件转换成PKCS12格式。
 
-### 方式1 将盈米OpenAPI 开发/生产环境的证书CA加入系统默认信任证书(如果您的应用除了访问盈米OpenAPI外还需要访问其它TLS资源)
+> 此步骤先安装opnessl命令，在Windows环境比较麻烦。为此，盈米直接在发布证书时会直接发一个p12文件，可以直接使用，并且忽略该步骤。
 
-```
-cp $JAVA_HOME/jre/lib/security/cacerts ~
-keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias yingmica -storepass changeit
-
+```bash
+openssl pkcs12 -export -in openapi-test-cert-foo.crt -inkey openapi-test-cert-foo.key > foo.p12
 ```
 
-### 方式2 创建只包含盈米 OpenAPI 开发/生产环境CA证书的 truststore
-```
-keytool -import -keystore ~/cacerts -file yingmi-openapi-root-ca.crt -alias yingmica -storepass changeit
-```
-命令行会提示“是否要信任该证书”，输入“Y”，并回车确认。
+此时会提示指定导出的p12文件密码。请记下这个密码，下一步会用到。盈米提供的p12文件的密码统一为123456。
 
-### 方式3 直接使用盈米提供的已经包含了 JRE 默认信任的公开CA证书以及盈米OpenAPI 开发/生产环境CA证书的  cacerts 文件
+**备注 － 关于根证书**
 
-### 备注
-
-由于历史原因, 盈米 OpenAPI 开发环境 https://api-test.frontnode.net 使用了盈米自签发的服务器证书, 该自签发证书将被废弃, 与生产环境一样使用由公开的证书签发机构(StartCOM Certificate Authority SHA256)签发的服务器证书。为了便于平滑过渡, 我们提供了两个证书的 PEM 格式文件, 建议都导入到 cacerts 文件中.
-
-由于StartCOM CA证书尚未被 Oracle 纳入Java默认受信任的证书库 $JAVA_HOME/jre/lib/security/cacerts 中, 因此需要将该证书导入到应用信任的cacerts 证书库中.
+> 由于历史原因, 盈米 OpenAPI 开发环境 https://api-test.frontnode.net 使用了盈米自签发的服务器证书, 该自签发证书已经被废弃,与生产环境一样使用由公开的证书签发机构签发的服务器证书。新的证书在大多数操作系统和JRE中都被认可，所以不再需要配置盈米根证书。
 
 
 # 2. 使用apiKey和apiSecret
@@ -118,8 +106,6 @@ git clone git@github.com:yingmi/openapi-client-java.git
 cd openapi-client-java
 mvn clean package
 java \
-	-Djavax.net.ssl.trustStore=cacerts \
-	-Djavax.net.ssl.trustStorePassword=changeit \
 	-Djavax.net.ssl.keyStoreType=pkcs12 \
 	-Djavax.net.ssl.keyStore=openapi-test-cert-0000.p12 \
 	-Djavax.net.ssl.keyStorePassword=123456 \
@@ -134,8 +120,6 @@ java \
 
 ```
 java \
-	-Djavax.net.ssl.trustStore=cacerts \
-	-Djavax.net.ssl.trustStorePassword=changeit \
 	-Djavax.net.ssl.keyStoreType=pkcs12 \
 	-Djavax.net.ssl.keyStore=openapi-prod-cert-0000.p12 \
 	-Djavax.net.ssl.keyStorePassword=123456 \
