@@ -2,16 +2,12 @@ package net.frontnode.openapi;
 
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
-
 import net.frontnode.openapi.model.Account;
 import net.frontnode.openapi.model.FundSearchInfo;
-
-import org.apache.commons.cli.*;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -22,20 +18,16 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContexts;
-import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import javax.net.ssl.X509TrustManager;
-
 import java.io.*;
-import java.net.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.*;
-import java.security.KeyStore.LoadStoreParameter;
 import java.security.cert.CertificateException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -57,10 +49,13 @@ public class YingmiApiClient {
     private String apiSecret;
 
     private HttpClient httpClient;
-    
+
     final private String keyStoreType;
     final private String keyStorePath;
     final private String keyStorePassword;
+
+    OutputStream out = null;
+    InputStream in = null;
 
 //    private String trustStorePath;
 //    private String trustStorePassword;
@@ -70,18 +65,18 @@ public class YingmiApiClient {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     // a handy simplified version
-    public YingmiApiClient(String host, String apiKey, String apiSecret ) {
-    	this(
-    			host,
-    			apiKey,
-    			apiSecret,
-    			System.getProperty("javax.net.ssl.keyStoreType", "jks"),
-    			System.getProperty("javax.net.ssl.keyStore"),
-    			System.getProperty("javax.net.ssl.keyStorePassword")
-    	);
+    public YingmiApiClient(String host, String apiKey, String apiSecret) {
+        this(
+                host,
+                apiKey,
+                apiSecret,
+                System.getProperty("javax.net.ssl.keyStoreType", "jks"),
+                System.getProperty("javax.net.ssl.keyStore"),
+                System.getProperty("javax.net.ssl.keyStorePassword")
+        );
     }
 
-	public YingmiApiClient(String host, String apiKey, String apiSecret, String keyStoreType, String keyStorePath, String keyStorePassword ) {
+    public YingmiApiClient(String host, String apiKey, String apiSecret, String keyStoreType, String keyStorePath, String keyStorePassword) {
         this.host = host;
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
@@ -92,33 +87,33 @@ public class YingmiApiClient {
         try {
 
             // load client certificate
-        	KeyStore ks = KeyStore.getInstance(this.keyStoreType);
-        	ks.load( new FileInputStream( new File( this.keyStorePath)), this.keyStorePassword.toCharArray());
+            KeyStore ks = KeyStore.getInstance(this.keyStoreType);
+            ks.load(new FileInputStream(new File(this.keyStorePath)), this.keyStorePassword.toCharArray());
 
-        	// Not calling loadTrustStore() in order to use the settings in $JAVA_OPTS implicitly
-        	// -Djavax.net.ssl.trustStore=/path/to/app-trust-store
-        	// -Djavax.net.ssl.trustStorePassword=password
-        	
-        	SSLContext context = SSLContexts.custom()
-        			.loadKeyMaterial(ks, this.keyStorePassword.toCharArray())
-        			.build();
-        
+            // Not calling loadTrustStore() in order to use the settings in $JAVA_OPTS implicitly
+            // -Djavax.net.ssl.trustStore=/path/to/app-trust-store
+            // -Djavax.net.ssl.trustStorePassword=password
+
+            SSLContext context = SSLContexts.custom()
+                    .loadKeyMaterial(ks, this.keyStorePassword.toCharArray())
+                    .build();
+
             SSLConnectionSocketFactory sf = new SSLConnectionSocketFactory(
                     context,
-                    new String[] {"TLSv1.2"},
+                    new String[]{"TLSv1.2"},
                     null,
                     SSLConnectionSocketFactory.getDefaultHostnameVerifier());
 
             httpClient = HttpClients.custom().setSSLSocketFactory(sf).build();
 
         } catch (
-        		KeyStoreException |
-        		NoSuchAlgorithmException |
-        		CertificateException |
-        		IOException |
-        		UnrecoverableKeyException |
-        		KeyManagementException 
-        		e) {
+                KeyStoreException |
+                        NoSuchAlgorithmException |
+                        CertificateException |
+                        IOException |
+                        UnrecoverableKeyException |
+                        KeyManagementException
+                        e) {
             e.printStackTrace();
         }
     }
@@ -141,6 +136,10 @@ public class YingmiApiClient {
 
     }
 
+    void getOrderFile(String fileName) {
+        downloadFile("/file/" + fileName, new HashMap<String, String>(), "下载本地地址");
+    }
+
     public String createAccount(Account account) {
         return post("/account/createAccount", account.asParamsMap());
     }
@@ -153,7 +152,7 @@ public class YingmiApiClient {
 
         addRequiredParams("GET", path, params, apiKey, apiSecret);
 
-        for (String key: params.keySet()) {
+        for (String key : params.keySet()) {
             builder.setParameter(key, params.get(key).toString());
         }
 
@@ -186,7 +185,7 @@ public class YingmiApiClient {
                 .setPath(basePath + path);
         // clear the params with empty value
         Map<String, String> trimmedParams = new HashMap<>();
-        for (String key: params.keySet()) {
+        for (String key : params.keySet()) {
             if (params.get(key) != null) {
                 trimmedParams.put(key, params.get(key));
             }
@@ -215,7 +214,70 @@ public class YingmiApiClient {
             }
             return sb.toString();
         } catch (IOException | URISyntaxException e) {
-           throw new RuntimeException(e);
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    void downloadFile(String path, Map<String, String> params, String localFileName) {
+        String basePath = "/v1";
+        URIBuilder builder = new URIBuilder().setScheme("https")
+                .setHost(host)
+                .setPath(basePath + path);
+
+        addRequiredParams("GET", path, params, apiKey, apiSecret);
+        for (String key : params.keySet()) {
+            builder.setParameter(key, params.get(key).toString());
+        }
+
+        try {
+            URI uri = builder.build();
+
+            HttpGet httpGet = new HttpGet(uri);
+            HttpResponse resp = httpClient.execute(httpGet);
+            if (resp.getStatusLine().getStatusCode() >= 300) {
+                throw new RuntimeException("Something wrong: " + resp.getStatusLine().toString());
+            }
+            HttpEntity entity = resp.getEntity();
+            in = entity.getContent();
+
+            long length = entity.getContentLength();
+            if (length <= 0) {
+                throw new RuntimeException("下载文件不存在!");
+            }
+
+            File file = new File(localFileName);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+
+            out = new FileOutputStream(file);
+            byte[] buffer = new byte[4096];
+            int readLength = 0;
+            while ((readLength = in.read(buffer)) > 0) {
+                byte[] bytes = new byte[readLength];
+                System.arraycopy(buffer, 0, bytes, 0, readLength);
+                out.write(bytes);
+            }
+            out.flush();
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
+        } finally {
+            try {
+                if (in != null) {
+                    in.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                if (out != null) {
+                    out.close();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -232,7 +294,7 @@ public class YingmiApiClient {
     String getSig(String method, String path, String apiSecret, Map<String, String> params) {
         StringBuilder sb = new StringBuilder();
         Set<String> keySet = new TreeSet<>(params.keySet());
-        for (String key: keySet) {
+        for (String key : keySet) {
             String value = params.get(key);
             if (value == null) {
                 continue;
